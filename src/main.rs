@@ -7,7 +7,8 @@ fn main() -> io::Result<()> {
     let logged_in = false;
 
     let args = Args::parse();
-    let interactive = args.name.is_none() || args.framework().is_none();
+    let interactive =
+        args.name.is_none() || args.framework().is_none() || (args.new && args.api_key.is_none());
 
     let theme = ColorfulTheme::default();
 
@@ -72,14 +73,18 @@ fn main() -> io::Result<()> {
     init(&project_name, &directory, framework)?;
 
     // 5. Confirm that the user wants to create the project environment on Shuttle
-    if interactive {
-        let should_create_environment = Confirm::with_theme(&theme)
+    let should_create_environment = if !interactive {
+        args.new
+    } else if args.new {
+        true
+    } else {
+        Confirm::with_theme(&theme)
             .with_prompt("Do you want to create the project environment on Shuttle?")
             .default(true)
-            .interact()?;
-        if should_create_environment {
-            set_environment(&project_name);
-        }
+            .interact()?
+    };
+    if should_create_environment {
+        set_environment(&project_name);
     }
 
     Ok(())
@@ -95,6 +100,10 @@ pub struct Args {
     pub rocket: bool,
     #[clap(long, conflicts_with_all = &["axum", "rocket"])]
     pub tide: bool,
+    #[clap(long)]
+    pub new: bool,
+    #[clap(long)]
+    pub api_key: Option<String>,
     #[clap(default_value = ".")]
     pub path: PathBuf,
 }
